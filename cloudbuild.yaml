@@ -1,0 +1,39 @@
+# Cloud Build CI: builds image and updates env-repo manifest (GitOps)
+# Set substitutions when creating the trigger:
+# _REGION=us-central1, _AR_REPO=my-repo, _ENV_REPO=env-repo, _ENV_BRANCH=main
+steps:
+# 1) Build container
+- name: 'gcr.io/cloud-builders/docker'
+  id: Build
+  args: ['build','-t','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA','.']
+
+# 2) Push image
+- name: 'gcr.io/cloud-builders/docker'
+  id: Push
+  args: ['push','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA']
+
+# 3) Update env-repo manifest with new image tag
+- name: 'gcr.io/cloud-builders/git'
+  id: Clone env-repo
+  entrypoint: bash
+  args:
+    - -ceu
+    - |
+      git config --global user.email "ci-bot@$PROJECT_ID.iam.gserviceaccount.com"
+      git config --global user.name "Cloud Build Bot"
+      # Using Cloud Source Repositories as example remote. Replace with GitHub URL if needed.
+      gcloud source repos clone ${_ENV_REPO} && cd ${_ENV_REPO}
+      git checkout ${_ENV_BRANCH}
+      sed -i "s|image: .*|image: ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA|g" k8s/deployment.yaml
+      git add k8s/deployment.yaml
+      git commit -m "Update image to $SHORT_SHA"
+      git push origin ${_ENV_BRANCH}
+
+substitutions:
+  _REGION: us-central1
+  _AR_REPO: my-repo
+  _ENV_REPO: env-repo
+  _ENV_BRANCH: main
+
+images:
+- '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA'
