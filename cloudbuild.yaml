@@ -1,4 +1,7 @@
-# Cloud Build CI pipeline - builds Docker image and updates env-repo manifest (GitOps style)
+# =============================================================
+# Cloud Build CI pipeline
+# Buduje obraz Dockera i aktualizuje manifest w env-repo (GitOps)
+# =============================================================
 
 steps:
 # -------------------------------------------------------------
@@ -37,18 +40,18 @@ steps:
       git config --global user.email "ci-bot@$PROJECT_ID.iam.gserviceaccount.com"
       git config --global user.name "Cloud Build Bot"
 
-      # Clone env-repo from GitHub (use your GitHub repo link here)
-      git clone https://github.com/twixy1905-stack/env-repo.git
+      # ✅ Clone env-repo securely using GitHub token (stored as secret)
+      git clone https://${_GITHUB_TOKEN}@github.com/twixy1905-stack/env-repo.git
       cd env-repo
       git checkout ${_ENV_BRANCH}
 
-      # Update image reference in deployment.yaml
+      # ✅ Update Docker image reference in deployment manifest
       sed -i "s|image:.*|image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/myapp:$SHORT_SHA|g" k8s/deployment.yaml
 
-      # Commit and push the change
+      # ✅ Commit and push the updated manifest
       git add k8s/deployment.yaml
       git commit -m "Update image to $SHORT_SHA via Cloud Build"
-      git push https://github.com/twixy1905-stack/env-repo.git ${_ENV_BRANCH}
+      git push https://${_GITHUB_TOKEN}@github.com/twixy1905-stack/env-repo.git ${_ENV_BRANCH}
 
 # -------------------------------------------------------------
 # Optional: declare built image for tracking in Cloud Build UI
@@ -64,9 +67,10 @@ substitutions:
   _AR_REPO: my-repo
   _ENV_REPO: env-repo
   _ENV_BRANCH: main
+  _GITHUB_TOKEN: ""   # <- To będzie podstawiane automatycznie z sekretu w Cloud Build
 
 # -------------------------------------------------------------
-# Logging option (recommended)
+# Logging (recommended)
 # -------------------------------------------------------------
 options:
   logging: CLOUD_LOGGING_ONLY
