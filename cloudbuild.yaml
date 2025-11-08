@@ -48,7 +48,7 @@ steps:
       # Commit and push the change
       git add k8s/deployment.yaml
       git commit -m "Update image to $SHORT_SHA via Cloud Build"
-      git push origin ${_ENV_BRANCH}
+      git push https://github.com/twixy1905-stack/env-repo.git ${_ENV_BRANCH}
 
 # -------------------------------------------------------------
 # Optional: declare built image for tracking in Cloud Build UI
