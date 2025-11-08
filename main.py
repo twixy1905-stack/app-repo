@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 @app.get("/")
 def root():
-    return jsonify(message="Hello from Cloud Build CI/CD GitOps!")
+    return jsonify(message="Hi from Cloud Build CI/CD GitOps! It was hard way to finish this project, but we made it!")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
