@@ -1,39 +1,72 @@
-# Cloud Build CI: builds image and updates env-repo manifest (GitOps)
+# Cloud Build CI pipeline - builds Docker image and updates env-repo manifest (GitOps style)
+
 steps:
-# 1) Build container
+# -------------------------------------------------------------
+# 1️⃣ Build Docker image
+# -------------------------------------------------------------
 - name: 'gcr.io/cloud-builders/docker'
   id: Build
-  args: ['build','-t','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA','.']
+  args:
+    [
+      'build',
+      '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA',
+      '.'
+    ]
 
-# 2) Push image
+# -------------------------------------------------------------
+# 2️⃣ Push image to Artifact Registry
+# -------------------------------------------------------------
 - name: 'gcr.io/cloud-builders/docker'
   id: Push
-  args: ['push','${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA']
+  args:
+    [
+      'push',
+      '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA'
+    ]
 
-# 3) Update env-repo manifest with new image tag
+# -------------------------------------------------------------
+# 3️⃣ Clone env-repo from GitHub and update deployment manifest
+# -------------------------------------------------------------
 - name: 'gcr.io/cloud-builders/git'
-  id: Clone env-repo
+  id: Clone and Update env-repo
   entrypoint: bash
   args:
-    - -ceu
+    - '-ceu'
     - |
+      set -x
       git config --global user.email "ci-bot@$PROJECT_ID.iam.gserviceaccount.com"
       git config --global user.name "Cloud Build Bot"
-      gcloud source repos clone ${_ENV_REPO} && cd ${_ENV_REPO}
+
+      # Clone env-repo from GitHub (use your GitHub repo link here)
+      git clone https://github.com/twixy1905-stack/env-repo.git
+      cd env-repo
       git checkout ${_ENV_BRANCH}
-      sed -i "s|image: .*|image: ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA|g" k8s/deployment.yaml
+
+      # Update image reference in deployment.yaml
+      sed -i "s|image:.*|image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/myapp:$SHORT_SHA|g" k8s/deployment.yaml
+
+      # Commit and push the change
       git add k8s/deployment.yaml
-      git commit -m "Update image to $SHORT_SHA"
+      git commit -m "Update image to $SHORT_SHA via Cloud Build"
       git push origin ${_ENV_BRANCH}
 
+# -------------------------------------------------------------
+# Optional: declare built image for tracking in Cloud Build UI
+# -------------------------------------------------------------
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA'
+
+# -------------------------------------------------------------
+# Variables (substitutions)
+# -------------------------------------------------------------
 substitutions:
   _REGION: us-central1
   _AR_REPO: my-repo
   _ENV_REPO: env-repo
   _ENV_BRANCH: main
 
-images:
-- '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/myapp:$SHORT_SHA'
-
+# -------------------------------------------------------------
+# Logging option (recommended)
+# -------------------------------------------------------------
 options:
   logging: CLOUD_LOGGING_ONLY
