@@ -7,7 +7,7 @@ import uuid
 app = Flask(__name__)
 
 # Konfiguracja i wartości domyślne
-DEFAULT_MESSAGE = "Hello from Cloud Build CI/CD GitOps!"
+DEFAULT_MESSAGE = "Hi from Cloud Build CI/CD GitOps!"
 DEFAULT_VERSION = "1.0"
 START_TIME = datetime.datetime.utcnow()
 
